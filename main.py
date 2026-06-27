@@ -39,19 +39,12 @@ if os.path.exists(os.path.join(frontend_path, "index.html")):
 
 # ============== ENDPOINTS ==============
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
 async def root():
-    return {
-        "name": os.getenv("APP_NAME", "YouTube Downloader API"),
-        "version": os.getenv("APP_VERSION", "1.0.0"),
-        "endpoints": {
-            "/info": "GET - Get video information",
-            "/download/video": "GET - Download video",
-            "/download/audio": "GET - Download audio only",
-            "/download/progress": "GET - Check download progress (coming soon)",
-            "/health": "GET - Health check"
-        }
-    }
+    # Langsung arahkan ke halaman frontend
+    return RedirectResponse(url="/frontend/index.html")
 
 @app.get("/health")
 async def health():
