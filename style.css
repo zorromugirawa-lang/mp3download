@@ -29,7 +29,7 @@ header {
 header h1 {
     font-size: 2.5rem;
     font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .subtitle {
@@ -39,7 +39,7 @@ header h1 {
 }
 
 .main-card {
-    background: white;
+    background: rgb(48, 44, 44);
     border-radius: 24px;
     padding: 40px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
@@ -136,8 +136,13 @@ header h1 {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Error Message */
@@ -244,8 +249,10 @@ header h1 {
     align-items: center;
     transition: all 0.2s;
     border: 2px solid transparent;
-    flex: 1 1 200px; /* Allow growing and shrinking with 200px base */
-    min-width: 220px; /* Prevent it from getting too small and squishing content */
+    flex: 1 1 200px;
+    /* Allow growing and shrinking with 200px base */
+    min-width: 220px;
+    /* Prevent it from getting too small and squishing content */
 }
 
 .stream-item:hover {
@@ -347,7 +354,7 @@ footer a {
     text-align: center;
     font-weight: 800;
     letter-spacing: -0.5px;
-    text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .seo-content h2 {
@@ -454,7 +461,7 @@ footer a {
     color: #ffffff;
     font-weight: bold;
     font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .steps-list li strong {
