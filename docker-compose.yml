@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  youtube-downloader:
+    build: .
+    container_name: yt-downloader
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      - DOWNLOAD_DIR=downloads
+      - DEBUG=True
+    restart: unless-stopped

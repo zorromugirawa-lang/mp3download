@@ -1,0 +1,24 @@
+youtube-downloader-app/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   ├── utils.py
+│   │   └── downloader.py
+│   ├── downloads/          (folder temporary untuk file download)
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── script.js
+│
+├── docker-compose.yml
+├── Dockerfile
+├── README.md
+└── run.bat (untuk Windows)

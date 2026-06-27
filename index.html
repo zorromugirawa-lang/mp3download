@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" type="image/svg+xml">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 YouTube Downloader</h1>
+            <p class="subtitle">Download video dan audio dari YouTube dengan mudah</p>
+        </header>
+
+        <div class="main-card">
+            <!-- Input Section -->
+            <div class="input-section">
+                <div class="url-input-group">
+                    <input type="text" id="urlInput" placeholder="Masukkan URL YouTube..." />
+                    <button id="fetchBtn" class="btn btn-primary">
+                        <span class="icon">🔍</span> Cek Video
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Mengambil informasi video...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message hidden"></div>
+
+            <!-- Video Info -->
+            <div id="videoInfo" class="video-info hidden">
+                <div class="video-header">
+                    <img id="thumbnail" src="" alt="Thumbnail" class="thumbnail">
+                    <div class="video-meta">
+                        <h2 id="videoTitle"></h2>
+                        <p id="videoAuthor"></p>
+                        <p id="videoStats"></p>
+                        <p id="videoDescription" class="description"></p>
+                    </div>
+                </div>
+
+                <!-- Quality Selection -->
+                <div class="quality-section">
+                    <h3>📊 Pilih Kualitas</h3>
+                    <div class="quality-tabs">
+                        <button class="tab-btn active" data-tab="video">Video</button>
+                        <button class="tab-btn" data-tab="audio">Audio</button>
+                    </div>
+
+                    <div id="videoStreams" class="streams-list"></div>
+                    <div id="audioStreams" class="streams-list hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; 2026 YouTube Downloader | <a href="#" onclick="cleanupFiles()">Bersihkan Cache</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
