@@ -1,5 +1,5 @@
 // Konfigurasi
-const API_BASE = window.location.protocol + "//" + window.location.hostname + ":8000";
+const API_BASE = window.location.origin;
 
 // DOM Elements
 const urlInput = document.getElementById('urlInput');
