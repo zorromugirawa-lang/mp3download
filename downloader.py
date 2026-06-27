@@ -9,9 +9,22 @@ class YouTubeDownloader:
         self.download_dir = download_dir
         os.makedirs(download_dir, exist_ok=True)
     
+    def _get_yt(self, url: str, on_progress_callback=None):
+        clients = ['WEB', 'ANDROID', 'IOS', 'MWEB', 'TV_EMBED', 'WEB_MUSIC']
+        last_error = None
+        for client in clients:
+            try:
+                yt = YouTube(url, on_progress_callback=on_progress_callback, client=client)
+                _ = yt.streaming_data  # Force fetch to test if blocked
+                return yt
+            except Exception as e:
+                last_error = e
+                continue
+        raise last_error
+
     def get_video_info(self, url: str) -> Dict[str, Any]:
         """Dapatkan informasi detail video"""
-        yt = YouTube(url)
+        yt = self._get_yt(url)
         
         video_streams = []
         unique_res = {}
@@ -67,7 +80,7 @@ class YouTubeDownloader:
     
     def download_video(self, url: str, quality: str = "highest", filename: Optional[str] = None) -> Dict[str, Any]:
         """Download video dengan kualitas tertentu"""
-        yt = YouTube(url, on_progress_callback=on_progress)
+        yt = self._get_yt(url, on_progress_callback=on_progress)
         
         if quality == "highest" or not quality:
             stream = yt.streams.get_highest_resolution()
@@ -101,7 +114,7 @@ class YouTubeDownloader:
     
     def download_audio(self, url: str, filename: Optional[str] = None) -> Dict[str, Any]:
         """Download audio saja"""
-        yt = YouTube(url, on_progress_callback=on_progress)
+        yt = self._get_yt(url, on_progress_callback=on_progress)
         
         stream = yt.streams.filter(only_audio=True).first()
         if not stream:
