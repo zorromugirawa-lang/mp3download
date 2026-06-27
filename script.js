@@ -12,9 +12,7 @@ const videoTitle = document.getElementById('videoTitle');
 const videoAuthor = document.getElementById('videoAuthor');
 const videoStats = document.getElementById('videoStats');
 const videoDescription = document.getElementById('videoDescription');
-const videoStreams = document.getElementById('videoStreams');
 const audioStreams = document.getElementById('audioStreams');
-const tabBtns = document.querySelectorAll('.tab-btn');
 
 // Event Listeners
 fetchBtn.addEventListener('click', fetchVideoInfo);
@@ -22,21 +20,6 @@ urlInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') fetchVideoInfo();
 });
 
-tabBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-        tabBtns.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        
-        const tab = this.dataset.tab;
-        if (tab === 'video') {
-            videoStreams.classList.remove('hidden');
-            audioStreams.classList.add('hidden');
-        } else {
-            videoStreams.classList.add('hidden');
-            audioStreams.classList.remove('hidden');
-        }
-    });
-});
 
 // ============== FUNCTIONS ==============
 
@@ -93,22 +76,6 @@ function displayVideoInfo(data, url) {
     videoStats.textContent = `⏱️ ${formatDuration(data.length)} • 👁️ ${formatNumber(data.views)} views`;
     videoDescription.textContent = data.description || '';
 
-    // Video Streams
-    videoStreams.innerHTML = '';
-    if (data.video_streams && data.video_streams.length > 0) {
-        data.video_streams.forEach(stream => {
-            const item = createStreamItem(
-                stream.resolution || 'Unknown',
-                stream.filesize_mb || 0,
-                'video',
-                url,
-                stream.resolution
-            );
-            videoStreams.appendChild(item);
-        });
-    } else {
-        videoStreams.innerHTML = '<p class="no-stream">Tidak ada stream video tersedia</p>';
-    }
 
     // Audio Streams
     audioStreams.innerHTML = '';
@@ -156,12 +123,7 @@ function createStreamItem(label, sizeMB, type, url, quality = null) {
     downloadBtn.innerHTML = '⬇<br>Download';
     
     downloadBtn.addEventListener('click', () => {
-        let downloadUrl;
-        if (type === 'video') {
-            downloadUrl = `${API_BASE}/download/video?url=${encodeURIComponent(url)}&quality=${quality}`;
-        } else {
-            downloadUrl = `${API_BASE}/download/audio?url=${encodeURIComponent(url)}`;
-        }
+        const downloadUrl = `${API_BASE}/download/audio?url=${encodeURIComponent(url)}`;
         window.open(downloadUrl, '_blank');
     });
     

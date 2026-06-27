@@ -1,159 +1,82 @@
 import os
-import yt_dlp
+import requests
+import re
 from typing import Dict, Any, Optional
+
+RAPIDAPI_HOST = "youtube-mp36.p.rapidapi.com"
+# Sebaiknya pindahkan ke .env (os.getenv("RAPIDAPI_KEY")) di tahap produksi
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "336b94c1f0mshdc0e4d3812bed2dp127c33jsn4f7673bda404")
 
 class YouTubeDownloader:
     def __init__(self, download_dir: str = "downloads"):
+        # Kita sebenarnya tidak menyimpan file lagi di sini, tapi
+        # untuk menjaga kompatibilitas dengan sisa kode, kita biarkan init-nya.
         self.download_dir = download_dir
         os.makedirs(download_dir, exist_ok=True)
-    
+        
+    def _extract_video_id(self, url: str) -> str:
+        """Ekstrak ID video YouTube dari berbagai format URL"""
+        patterns = [
+            r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+            r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})',
+            r'(?:embed\/)([0-9A-Za-z_-]{11})'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+                
+        raise ValueError("URL YouTube tidak valid atau ID tidak ditemukan.")
+
     def get_video_info(self, url: str) -> Dict[str, Any]:
-        """Dapatkan informasi detail video menggunakan yt-dlp"""
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'skip_download': True,
-            'extractor_args': {'youtube': ['player_client=android,web']}
+        """Dapatkan info video menggunakan RapidAPI dan oEmbed"""
+        video_id = self._extract_video_id(url)
+        
+        # 1. Ambil Metadata via YouTube oEmbed (gratis, tanpa blokir IP)
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+        try:
+            oembed_resp = requests.get(oembed_url, timeout=5)
+            oembed_data = oembed_resp.json() if oembed_resp.ok else {}
+        except Exception:
+            oembed_data = {}
+            
+        # 2. Ambil Link Download via RapidAPI
+        rapid_url = "https://youtube-mp36.p.rapidapi.com/dl"
+        headers = {
+            "x-rapidapi-host": RAPIDAPI_HOST,
+            "x-rapidapi-key": RAPIDAPI_KEY,
+            "Content-Type": "application/json"
         }
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        rapid_resp = requests.get(rapid_url, headers=headers, params={"id": video_id}, timeout=15)
+        if not rapid_resp.ok:
+            raise Exception(f"Gagal menghubungi API ({rapid_resp.status_code})")
             
-        video_streams = []
-        unique_res = {}
+        rapid_data = rapid_resp.json()
         
-        # Cari format video
-        for f in info.get('formats', []):
-            if f.get('vcodec') != 'none' and f.get('ext') == 'mp4':
-                height = f.get('height')
-                if not height:
-                    continue
-                    
-                res_str = f"{height}p"
-                
-                if res_str not in ['1080p', '720p', '480p', '360p', '144p']:
-                    continue
-                    
-                fsize = f.get('filesize') or f.get('filesize_approx') or 0
-                fsize_mb = fsize / (1024 * 1024) if fsize else 0
-                
-                # yt-dlp memisahkan video+audio (progressive) dan video only.
-                # Kita lebih menyukai video yang memiliki codec audio (acodec != none)
-                # untuk menghindari video tanpa suara.
-                has_audio = f.get('acodec') != 'none'
-                
-                # Simpan resolusi (update jika ada yang punya audio, atau ukuran lebih masuk akal)
-                if res_str not in unique_res or (has_audio and not unique_res[res_str].get('has_audio')):
-                    unique_res[res_str] = {
-                        'resolution': res_str,
-                        'fps': f.get('fps', 30),
-                        'filesize': fsize,
-                        'filesize_mb': fsize_mb,
-                        'itag': f.get('format_id'), 
-                        'type': 'video/mp4',
-                        'has_audio': has_audio
-                    }
-                    
-        # Urutkan resolusi
-        res_order = {'1080p': 1, '720p': 2, '480p': 3, '360p': 4, '144p': 5}
-        sorted_res = sorted(unique_res.values(), key=lambda x: res_order.get(x['resolution'], 99))
-        
-        # Hapus flag has_audio agar tidak membingungkan frontend
-        for s in sorted_res:
-            s.pop('has_audio', None)
+        if rapid_data.get("status") != "ok" or not rapid_data.get("link"):
+            raise Exception("API tidak mengembalikan link download yang valid.")
             
-        video_streams = sorted_res
-
-        # Cari format audio
-        audio_streams = []
-        unique_abr = {}
+        # Format respons ke standar yang diharapkan frontend
+        fsize = rapid_data.get("filesize", 0)
+        fsize_mb = fsize / (1024 * 1024) if fsize else 0
         
-        for f in info.get('formats', []):
-            if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
-                abr = f.get('abr')
-                if not abr:
-                    continue
-                    
-                abr_str = f"{int(abr)}kbps"
-                
-                fsize = f.get('filesize') or f.get('filesize_approx') or 0
-                fsize_mb = fsize / (1024 * 1024) if fsize else 0
-                
-                if abr_str not in unique_abr:
-                    unique_abr[abr_str] = {
-                        'abr': abr_str,
-                        'filesize': fsize,
-                        'filesize_mb': fsize_mb,
-                        'itag': f.get('format_id')
-                    }
-                    
-        audio_streams = sorted(unique_abr.values(), key=lambda x: int(x['abr'].replace('kbps', '')), reverse=True)
+        audio_streams = [{
+            'abr': 'MP3 Audio', # Hanya ada 1 pilihan
+            'filesize': fsize,
+            'filesize_mb': fsize_mb,
+            'itag': 'rapidapi',
+            'link': rapid_data.get("link")
+        }]
 
         return {
-            'title': info.get('title', 'Unknown Title'),
-            'author': info.get('uploader', 'Unknown Author'),
-            'length': info.get('duration', 0),
-            'views': info.get('view_count', 0),
-            'description': info.get('description', '')[:500] + '...' if info.get('description') else '',
-            'thumbnail_url': info.get('thumbnail', ''),
-            'video_streams': video_streams,
+            'title': oembed_data.get('title') or rapid_data.get('title') or 'Unknown Title',
+            'author': oembed_data.get('author_name') or 'YouTube Music',
+            'length': rapid_data.get('duration', 0),
+            'views': 0, # oEmbed dan RapidAPI ini tidak memberi info views
+            'description': '', # Tidak tersedia
+            'thumbnail_url': oembed_data.get('thumbnail_url') or f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+            'video_streams': [], # Kosong karena sekarang hanya MP3
             'audio_streams': audio_streams
-        }
-
-    def download_video(self, url: str, quality: str = "highest", filename: Optional[str] = None) -> Dict[str, Any]:
-        """Download video menggunakan yt-dlp"""
-        height = quality.replace('p', '') if quality and quality != "highest" else None
-        
-        # best[height<=...][ext=mp4] akan mencari video terbaik yang ukurannya maksimal sebesar height
-        # yang merupakan format pre-merged (video+audio).
-        if height:
-            format_selector = f'best[height<={height}][ext=mp4]/best'
-        else:
-            format_selector = 'best[ext=mp4]/best'
-            
-        out_tpl = os.path.join(self.download_dir, '%(title)s.%(ext)s')
-        
-        ydl_opts = {
-            'format': format_selector,
-            'outtmpl': out_tpl,
-            'quiet': True,
-            'no_warnings': True,
-            'extractor_args': {'youtube': ['player_client=android,web']}
-        }
-        
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            dl_filename = ydl.prepare_filename(info)
-            
-        return {
-            'success': True,
-            'message': 'Download berhasil',
-            'filename': os.path.basename(dl_filename),
-            'filepath': dl_filename,
-            'filesize': os.path.getsize(dl_filename) if os.path.exists(dl_filename) else 0
-        }
-
-    def download_audio(self, url: str, filename: Optional[str] = None) -> Dict[str, Any]:
-        """Download audio menggunakan yt-dlp"""
-        out_tpl = os.path.join(self.download_dir, '%(title)s.%(ext)s')
-        
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': out_tpl,
-            'quiet': True,
-            'no_warnings': True,
-            'extractor_args': {'youtube': ['player_client=android,web']}
-        }
-        
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            # Karena kita tidak memaksa transcode mp3 via ffmpeg, file aslinya (.webm/.m4a) yang akan dikembalikan
-            dl_filename = ydl.prepare_filename(info)
-            
-        return {
-            'success': True,
-            'message': 'Download audio berhasil',
-            'filename': os.path.basename(dl_filename),
-            'filepath': dl_filename,
-            'filesize': os.path.getsize(dl_filename) if os.path.exists(dl_filename) else 0
         }

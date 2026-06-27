@@ -61,51 +61,25 @@ async def get_info(url: str = Query(..., description="YouTube URL")):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
 
-@app.get("/download/video")
-async def download_video(
-    url: str = Query(..., description="YouTube URL"),
-    quality: str = Query("highest", description="Kualitas: 1080p, 720p, 480p, 360p, atau 'highest'"),
-    filename: str = Query(None, description="Nama file custom")
-):
-    """
-    Download video dengan kualitas yang dipilih
-    """
-    try:
-        result = downloader.download_video(url, quality, filename)
-        
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["message"])
-        
-        # Kirim file
-        return FileResponse(
-            path=result["path"],
-            media_type="video/mp4",
-            filename=result["filename"]
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
 
 @app.get("/download/audio")
 async def download_audio(
-    url: str = Query(..., description="YouTube URL"),
-    filename: str = Query(None, description="Nama file custom")
+    url: str = Query(..., description="YouTube URL")
 ):
     """
-    Download audio saja
+    Mengarahkan (redirect) pengguna langsung ke link RapidAPI
     """
     try:
-        result = downloader.download_audio(url, filename)
+        info = downloader.get_video_info(url)
         
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["message"])
-        
-        return FileResponse(
-            path=result["path"],
-            media_type="audio/mp4",
-            filename=result["filename"]
-        )
+        if not info.get("audio_streams"):
+            raise HTTPException(status_code=400, detail="Audio tidak ditemukan")
+            
+        link = info["audio_streams"][0].get("link")
+        if not link:
+            raise HTTPException(status_code=400, detail="Link download tidak valid")
+            
+        return RedirectResponse(url=link)
     except HTTPException:
         raise
     except Exception as e:
