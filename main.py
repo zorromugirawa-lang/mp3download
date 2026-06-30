@@ -50,6 +50,14 @@ async def root():
 async def bing_site_auth():
     return FileResponse(os.path.join(frontend_path, "BingSiteAuth.xml"), media_type="application/xml")
 
+@app.get("/style.css")
+async def style_css():
+    return FileResponse(os.path.join(frontend_path, "style.css"))
+
+@app.get("/script.js")
+async def script_js():
+    return FileResponse(os.path.join(frontend_path, "script.js"))
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "download_dir": DOWNLOAD_DIR}
