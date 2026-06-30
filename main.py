@@ -46,6 +46,10 @@ async def root():
     # Sajikan index.html secara langsung tanpa redirect
     return FileResponse(os.path.join(frontend_path, "index.html"))
 
+@app.get("/BingSiteAuth.xml")
+async def bing_site_auth():
+    return FileResponse(os.path.join(frontend_path, "BingSiteAuth.xml"), media_type="application/xml")
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "download_dir": DOWNLOAD_DIR}
