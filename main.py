@@ -43,8 +43,8 @@ from fastapi.responses import RedirectResponse
 
 @app.get("/")
 async def root():
-    # Langsung arahkan ke halaman frontend
-    return RedirectResponse(url="/frontend/index.html")
+    # Sajikan index.html secara langsung tanpa redirect
+    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 @app.get("/health")
 async def health():
