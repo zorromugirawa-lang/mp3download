@@ -50,6 +50,10 @@ async def root():
 async def bing_site_auth():
     return FileResponse(os.path.join(frontend_path, "BingSiteAuth.xml"), media_type="application/xml")
 
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    return FileResponse(os.path.join(frontend_path, "sitemap.xml"), media_type="application/xml")
+
 @app.get("/style.css")
 async def style_css():
     return FileResponse(os.path.join(frontend_path, "style.css"))
