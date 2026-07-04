@@ -62,6 +62,10 @@ async def style_css():
 async def script_js():
     return FileResponse(os.path.join(frontend_path, "script.js"))
 
+@app.get("/pasang-iklan.html")
+async def pasang_iklan():
+    return FileResponse(os.path.join(frontend_path, "pasang-iklan.html"))
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "download_dir": DOWNLOAD_DIR}
