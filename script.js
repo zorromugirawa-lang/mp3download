@@ -1,5 +1,5 @@
 // Konfigurasi
-const API_BASE = window.location.origin;
+const API_BASE = ''; // Menggunakan relative URL agar selalu sesuai dengan domain (custom atau bawaan)
 
 // DOM Elements
 const urlInput = document.getElementById('urlInput');
@@ -124,7 +124,13 @@ function createStreamItem(label, sizeMB, type, url, quality = null) {
     
     downloadBtn.addEventListener('click', () => {
         const downloadUrl = `${API_BASE}/download/audio?url=${encodeURIComponent(url)}`;
-        window.open(downloadUrl, '_blank');
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.target = '_blank';
+        a.rel = 'noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
     
     div.appendChild(labelSpan);
