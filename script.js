@@ -1,5 +1,7 @@
-// Konfigurasi
-const API_BASE = window.location.origin;
+// Jika dibuka via file:// atau XAMPP (port 80), otomatis arahkan ke backend FastAPI di port 8000
+const API_BASE = (window.location.protocol === 'file:' || window.location.port === '' || window.location.port === '80') 
+    ? 'http://localhost:8000' 
+    : window.location.origin;
 
 // DOM Elements
 const urlInput = document.getElementById('urlInput');
@@ -41,13 +43,20 @@ async function fetchVideoInfo() {
 
     try {
         const response = await fetch(`${API_BASE}/info?url=${encodeURIComponent(url)}`);
+        const textResp = await response.text();
         
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Gagal mengambil informasi video');
+        let data;
+        try {
+            data = JSON.parse(textResp);
+        } catch (e) {
+            console.error('Non-JSON Response:', textResp.substring(0, 200));
+            throw new Error('Server tidak mengembalikan JSON. Pastikan backend FastAPI sedang berjalan (misal di port 8000) dan API_BASE sudah benar.');
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || 'Gagal mengambil informasi video');
+        }
+
         displayVideoInfo(data, url);
         
     } catch (error) {
