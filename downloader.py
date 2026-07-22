@@ -1,9 +1,10 @@
 import os
 import requests
 import re
+import time
 from typing import Dict, Any, Optional
 
-RAPIDAPI_HOST = "youtube-mp3-2025.p.rapidapi.com"
+RAPIDAPI_HOST = "youtube-mp36.p.rapidapi.com"
 # Sebaiknya pindahkan ke .env (os.getenv("RAPIDAPI_KEY")) di tahap produksi
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "336b94c1f0mshdc0e4d3812bed2dp127c33jsn4f7673bda404")
 
@@ -42,38 +43,44 @@ class YouTubeDownloader:
             oembed_data = {}
             
         # 2. Ambil Link Download via RapidAPI
-        rapid_url = f"https://{RAPIDAPI_HOST}/v1/social/youtube/audio"
+        rapid_url = f"https://{RAPIDAPI_HOST}/dl"
         headers = {
             "x-rapidapi-host": RAPIDAPI_HOST,
             "x-rapidapi-key": RAPIDAPI_KEY,
-            "Content-Type": "application/json"
+            "User-Agent": "Mozilla/5.0"
         }
         
-        # Gunakan parameter sesuai API baru
         params = {
-            "id": video_id,
-            "quality": "128kbps", 
-            "ext": "m4a"
+            "id": video_id
         }
         
-        rapid_resp = requests.get(rapid_url, headers=headers, params=params, timeout=15)
-        if not rapid_resp.ok:
-            raise Exception(f"Gagal menghubungi API ({rapid_resp.status_code})")
+        max_retries = 15
+        download_link = None
+        
+        for _ in range(max_retries):
+            rapid_resp = requests.get(rapid_url, headers=headers, params=params, timeout=15)
+            if not rapid_resp.ok:
+                raise Exception(f"Gagal menghubungi API ({rapid_resp.status_code})")
+                
+            rapid_data = rapid_resp.json()
+            status = rapid_data.get("status")
             
-        rapid_data = rapid_resp.json()
-        
-        if rapid_data.get("error"):
-             raise Exception(f"API mengembalikan error: {rapid_data.get('message', 'Tidak diketahui')}")
-
-        download_link = rapid_data.get("linkDownload")
-        
+            if status == "ok":
+                download_link = rapid_data.get("link")
+                break
+            elif status == "processing":
+                time.sleep(1)
+            else:
+                msg = rapid_data.get("msg") or rapid_data.get("message") or "API mengembalikan error"
+                raise Exception(f"API Error: {msg}")
+                
         if not download_link:
-            raise Exception("API tidak mengembalikan link audio yang valid.")
+            raise Exception("API sedang sibuk (processing terlalu lama). Silakan coba lagi nanti.")
             
         # API baru tidak mengembalikan ukuran file, kita set 0
         fsize = 0
         fsize_mb = 0
-        extension = "m4a"
+        extension = "mp3"
         
         audio_streams = [{
             'abr': f'Audio {extension.upper()}',
