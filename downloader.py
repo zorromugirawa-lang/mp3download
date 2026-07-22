@@ -4,9 +4,8 @@ import re
 import time
 from typing import Dict, Any, Optional
 
-RAPIDAPI_HOST = "youtube-media-downloader.p.rapidapi.com"
-# Sebaiknya pindahkan ke .env (os.getenv("RAPIDAPI_KEY")) di tahap produksi
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "336b94c1f0mshdc0e4d3812bed2dp127c33jsn4f7673bda404")
+# Kunci API untuk savenow.to
+SAVENOW_APIKEY = os.getenv("SAVENOW_APIKEY", "95804d2111987a889bfcac49786a9833547eb20d")
 
 class YouTubeDownloader:
     def __init__(self, download_dir: str = "downloads"):
@@ -42,65 +41,69 @@ class YouTubeDownloader:
         except Exception:
             oembed_data = {}
             
-        # 2. Ambil Link Download via RapidAPI
-        rapid_url = f"https://{RAPIDAPI_HOST}/v2/video/details"
-        headers = {
-            "x-rapidapi-host": RAPIDAPI_HOST,
-            "x-rapidapi-key": RAPIDAPI_KEY,
-            "Content-Type": "application/json"
-        }
-        
+        # 2. Ambil Link Download via API savenow.to
+        savenow_url = "https://p.savenow.to/api/v2/download"
         params = {
-            "videoId": video_id,
-            "urlAccess": "normal",
-            "videos": "auto",
-            "audios": "auto"
+            "format": "mp3",
+            "url": f"https://www.youtube.com/watch?v={video_id}",
+            "apikey": SAVENOW_APIKEY
         }
         
-        rapid_resp = requests.get(rapid_url, headers=headers, params=params, timeout=15)
-        if not rapid_resp.ok:
-            raise Exception(f"Gagal menghubungi API ({rapid_resp.status_code}): {rapid_resp.text}")
+        resp = requests.get(savenow_url, params=params, timeout=15)
+        if not resp.ok:
+            raise Exception(f"Gagal menghubungi API savenow ({resp.status_code})")
             
-        rapid_data = rapid_resp.json()
+        data = resp.json()
         
-        # Cek Error dari API baru
-        if rapid_data.get("errorId") and rapid_data.get("errorId") != "Success":
-            raise Exception(f"API Error: {rapid_data.get('errorId')}")
+        if not data.get("success"):
+            raise Exception("API mengembalikan respon gagal pada request awal.")
             
-        # Ambil audio
-        audios = rapid_data.get("audios", {}).get("items", [])
-        if not audios:
-            raise Exception("API tidak mengembalikan link audio yang valid.")
+        download_url = data.get("url")
+        progress_url = data.get("progress_url")
+        
+        # Polling if we only get progress_url (masih proses)
+        if not download_url and progress_url:
+            max_retries = 30
+            for _ in range(max_retries):
+                time.sleep(2) # Polling interval
+                try:
+                    prog_resp = requests.get(progress_url, timeout=15)
+                    if prog_resp.ok:
+                        prog_data = prog_resp.json()
+                        if prog_data.get("success") == 1:
+                            download_url = prog_data.get("download_url")
+                            data = prog_data # Update data dengan info terbaru
+                            break
+                except Exception:
+                    pass # Ignore temporary network errors during polling
+                    
+        if not download_url:
+            raise Exception("Gagal mendapatkan link audio setelah beberapa kali percobaan (waktu tunggu habis).")
             
-        audio_streams = []
-        for audio in audios:
-            fsize = audio.get("size", 0)
-            fsize_mb = fsize / (1024 * 1024) if fsize else 0
-            extension = audio.get("extension", "m4a")
-            
-            audio_streams.append({
-                'abr': f'Audio {extension.upper()}',
-                'filesize': fsize,
-                'filesize_mb': fsize_mb,
-                'itag': 'rapidapi',
-                'link': audio.get("url")
-            })
-
-        # Ambil thumbnail
-        thumbnails_list = rapid_data.get("thumbnails", [])
-        if thumbnails_list:
-            thumb_url = thumbnails_list[-1].get("url") # Ambil resolusi terbesar
-        else:
-            thumb_url = oembed_data.get("thumbnail_url") if oembed_data else f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
-            
-        author = rapid_data.get("channel", {}).get("name") or oembed_data.get("author_name") or "YouTube"
+        # Parse streams
+        extension = "mp3"
+        fsize = 0
+        fsize_mb = 0
+        
+        audio_streams = [{
+            'abr': f'Audio {extension.upper()}',
+            'filesize': fsize,
+            'filesize_mb': fsize_mb,
+            'itag': 'savenow',
+            'link': download_url
+        }]
+        
+        # Gunakan info dari savenow atau fallback ke oembed
+        info = data.get("info", {})
+        title = data.get("title") or info.get("title") or oembed_data.get("title") or "Unknown Title"
+        thumb_url = data.get("thumbnail_url") or info.get("image") or oembed_data.get("thumbnail_url") or f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
         
         return {
-            'title': rapid_data.get("title") or oembed_data.get("title") or "Unknown Title",
-            'author': author,
-            'length': rapid_data.get("lengthSeconds") or 0,
-            'views': rapid_data.get("viewCount") or 0,
-            'description': rapid_data.get("description") or "",
+            'title': title,
+            'author': oembed_data.get("author_name") or "YouTube",
+            'length': data.get("video_duration") or 0,
+            'views': 0, # Savenow API tidak menyertakan views
+            'description': "", 
             'thumbnail_url': thumb_url,
             'video_streams': [], # Kosong karena antarmuka kita fokus ke audio
             'audio_streams': audio_streams
