@@ -1,5 +1,5 @@
-// Jika dibuka via file:// atau XAMPP (port 80), otomatis arahkan ke backend FastAPI di port 8000
-const API_BASE = (window.location.protocol === 'file:' || window.location.port === '' || window.location.port === '80') 
+// Jika dibuka via file:// atau XAMPP/localhost, otomatis arahkan ke backend FastAPI di port 8000
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') 
     ? 'http://localhost:8000' 
     : window.location.origin;
 
