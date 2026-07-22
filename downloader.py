@@ -3,7 +3,7 @@ import requests
 import re
 from typing import Dict, Any, Optional
 
-RAPIDAPI_HOST = "youtube-mp3-audio-video-downloader.p.rapidapi.com"
+RAPIDAPI_HOST = "youtube-mp3-2025.p.rapidapi.com"
 # Sebaiknya pindahkan ke .env (os.getenv("RAPIDAPI_KEY")) di tahap produksi
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "336b94c1f0mshdc0e4d3812bed2dp127c33jsn4f7673bda404")
 
@@ -42,7 +42,7 @@ class YouTubeDownloader:
             oembed_data = {}
             
         # 2. Ambil Link Download via RapidAPI
-        rapid_url = f"https://{RAPIDAPI_HOST}/get_mp3_download_link/{video_id}"
+        rapid_url = f"https://{RAPIDAPI_HOST}/v1/social/youtube/audio"
         headers = {
             "x-rapidapi-host": RAPIDAPI_HOST,
             "x-rapidapi-key": RAPIDAPI_KEY,
@@ -51,8 +51,9 @@ class YouTubeDownloader:
         
         # Gunakan parameter sesuai API baru
         params = {
-            "quality": "high", 
-            "wait_until_the_file_is_ready": "false"
+            "id": video_id,
+            "quality": "128kbps", 
+            "ext": "m4a"
         }
         
         rapid_resp = requests.get(rapid_url, headers=headers, params=params, timeout=15)
@@ -61,15 +62,18 @@ class YouTubeDownloader:
             
         rapid_data = rapid_resp.json()
         
-        download_link = rapid_data.get("file")
+        if rapid_data.get("error"):
+             raise Exception(f"API mengembalikan error: {rapid_data.get('message', 'Tidak diketahui')}")
+
+        download_link = rapid_data.get("linkDownload")
         
         if not download_link:
-            raise Exception(f"API tidak mengembalikan link audio yang valid. Respons API: {rapid_data.get('message', 'Tidak diketahui')}")
+            raise Exception("API tidak mengembalikan link audio yang valid.")
             
         # API baru tidak mengembalikan ukuran file, kita set 0
         fsize = 0
         fsize_mb = 0
-        extension = "mp3"
+        extension = "m4a"
         
         audio_streams = [{
             'abr': f'Audio {extension.upper()}',
@@ -79,15 +83,19 @@ class YouTubeDownloader:
             'link': download_link
         }]
 
-        thumbnails = oembed_data.get('thumbnail_url') if oembed_data else f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
-        thumb_url = thumbnails
+        # Ambil thumbnail
+        thumbnails_list = rapid_data.get('thumbnail', {}).get('thumbnails', [])
+        if thumbnails_list:
+            thumb_url = thumbnails_list[-1].get('url') # Ambil resolusi terbesar
+        else:
+            thumb_url = oembed_data.get('thumbnail_url') if oembed_data else f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
         
         return {
-            'title': oembed_data.get('title') or 'Unknown Title',
-            'author': oembed_data.get('author_name') or 'YouTube',
-            'length': 0, # Oembed tidak memberikan durasi secara default
-            'views': 0, 
-            'description': '',
+            'title': rapid_data.get('title') or oembed_data.get('title') or 'Unknown Title',
+            'author': rapid_data.get('author') or oembed_data.get('author_name') or 'YouTube',
+            'length': rapid_data.get('lengthSeconds') or 0,
+            'views': rapid_data.get('viewCount') or 0,
+            'description': rapid_data.get('shortDescription') or '',
             'thumbnail_url': thumb_url,
             'video_streams': [], # Kosong karena sekarang hanya Audio
             'audio_streams': audio_streams
